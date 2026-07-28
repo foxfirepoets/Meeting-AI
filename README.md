@@ -1,20 +1,43 @@
-# Quietline — silent meeting assistant prototype
+# Meeting-AI
 
-Quietline is a small, demo-first meeting companion for a browser. A participant enters a meeting ID and access code, loads transcript context, asks a question, and sees a grounded answer, transcript sources, and proposed action items.
+Meeting-AI is a browser-based, silent meeting assistant. Vexa joins a Google Meet, captures and transcribes the conversation, and Claude answers questions about the transcript in a side panel.
 
-The prototype is intentionally quiet: it does not capture audio, transcribe speech, send messages, update task systems, or take autonomous actions.
+The assistant does not speak automatically, interrupt the meeting, send messages, or take actions without a person asking.
 
-## Local run
+## Intended meeting flow
+
+1. The host opens the Meeting-AI Vercel URL.
+2. The host pastes the full Google Meet link, for example `https://meet.google.com/abc-defg-hij`.
+3. Meeting-AI asks Vexa to send a notetaker bot to that meeting.
+4. The host admits the bot from the Google Meet waiting room.
+5. Vexa captures the meeting audio and creates a live transcript.
+6. Participants open the same URL on their phones or computers.
+7. Participants ask questions in the side panel.
+8. Claude answers from the meeting transcript and shows supporting transcript sources.
+
+The host must tell participants that the meeting is being recorded/transcribed and obtain any consent required by local law or company policy.
+
+## Current status
+
+The repository currently contains a working demo UI and demo transcript flow. Demo mode does not connect to a real meeting. The live Vexa bot/transcript integration and direct Anthropic Messages API adapter are the next implementation steps required for real meetings.
+
+## Local demo
 
 Requirements: Node.js 20+ and npm.
 
 ```bash
 npm install
-copy .env.example .env.local   # PowerShell: Copy-Item .env.example .env.local
+copy .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The default demo access code is `demo-access`. The demo transcript loads without any external credentials.
+PowerShell users can use:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Open [http://localhost:3000](http://localhost:3000). Demo access code: `demo-access`.
 
 Useful checks:
 
@@ -24,71 +47,61 @@ npm run typecheck
 npm run build
 ```
 
-## Configuration
+## Environment variables
 
-All settings are documented in `.env.example`. Never commit `.env.local` or provider credentials.
+Never commit `.env.local` or provider credentials. Add production secrets in Vercel Project Settings → Environment Variables.
 
-### Vexa setup
-
-The Vexa adapter is in `lib/vexa.ts`. Demo mode is the default:
+### Access
 
 ```env
-VEXA_MODE=demo
+ACCESS_CODE=choose-a-code-users-can-type
+SESSION_SECRET=use-a-long-random-secret
 ```
 
-For a Vexa-compatible HTTP service, set:
+### Vexa
+
+For the hosted Vexa service:
 
 ```env
 VEXA_MODE=live
-VEXA_BASE_URL=https://your-vexa-service.example
-VEXA_API_KEY=your-key
+VEXA_BASE_URL=https://api.cloud.vexa.ai
+VEXA_API_KEY=your-vexa-api-key
 ```
 
-The current adapter makes an authenticated `GET /meetings/{meetingId}/transcript` request and accepts a JSON array or an object containing `transcript` or `items`. Each record should include `text` and may include `id`, `speaker`, `timestamp`, `timeLabel`, and `source`. Adapt that one module if the deployed Vexa API uses a different route or response shape.
+Get a hosted Vexa API key at [vexa.ai/account](https://vexa.ai/account). Vexa’s API sends the bot to the meeting and provides transcript data. The Vexa service is external to Vercel and must be reachable over HTTPS.
 
-### LLM provider setup
+### Anthropic
 
-Demo mode is the default and is deterministic:
-
-```env
-LLM_MODE=demo
-```
-
-Live mode uses an OpenAI-compatible HTTP chat-completions endpoint. It does not invoke a shell or vendor CLI:
+The intended live provider is the Anthropic API, not Claude Code CLI:
 
 ```env
 LLM_MODE=live
-LLM_BASE_URL=https://your-provider.example/v1
-LLM_API_KEY=your-key
-LLM_MODEL=your-model
+LLM_BASE_URL=https://api.anthropic.com/v1
+LLM_API_KEY=your-anthropic-api-key
+LLM_MODEL=claude-sonnet-4-20250514
 ```
 
-The adapter posts to `${LLM_BASE_URL}/chat/completions`. The interface is isolated in `lib/llm.ts`, so a future Claude Code CLI or Codex integration can be added behind a separate server-side adapter without changing the UI. Do not run arbitrary shells from Vercel functions.
+The live adapter must call Anthropic’s `/messages` endpoint. The current demo adapter still uses the OpenAI-compatible `/chat/completions` shape, so live Anthropic mode is not complete yet.
 
 ## Vercel deployment
 
 1. Import this repository into Vercel.
-2. Use the default Next.js build settings.
-3. Add `ACCESS_CODE` and a long random `SESSION_SECRET` in the project Environment Variables.
-4. Leave both adapters in demo mode for a zero-credential preview, or add the Vexa/LLM variables above using the exact names shown. Do not prefix provider secrets with `NEXT_PUBLIC_`.
-5. For live mode, `VEXA_BASE_URL` and `LLM_BASE_URL` must be externally reachable over HTTPS from Vercel Functions; a service bound only to `localhost` or a private local network will not work.
-6. Deploy and open the generated URL. The browser uses same-origin API paths, and the responsive layout supports mobile access.
+2. Use the default Next.js settings.
+3. Add the access, Vexa, and Anthropic environment variables.
+4. Keep provider keys server-side; never use `NEXT_PUBLIC_` for them.
+5. Deploy and share the generated `.vercel.app` URL.
 
-The app uses standard Next.js route handlers and does not require a database. Vercel environment variables are server-side by default because the provider variables are read only in API route modules.
+Users do not need to install Vexa, Claude, or Meeting-AI. They only need the Vercel link and the Meeting-AI access code.
 
 ## API routes
 
-- `POST /api/session` — validates `{ meetingId, accessCode }` and sets an HTTP-only session cookie.
-- `GET /api/meeting/{meetingId}/transcript` — returns demo or Vexa transcript entries.
-- `POST /api/meeting/{meetingId}/ask` — accepts `{ question, transcript }` and returns an answer, sources, proposed actions, and adapter mode.
+- `POST /api/session` — validates the meeting access code and creates a session.
+- `GET /api/meeting/{meetingId}/transcript` — loads transcript context.
+- `POST /api/meeting/{meetingId}/ask` — asks the configured LLM about the transcript.
 
-## Known limitations
+## Important limitations before production use
 
-- This is a prototype access gate, not production authentication. One shared access code is used; there are no users, roles, revocation, rate limits, CSRF tokens, or persistent sessions.
-- The session cookie is signed and expires after eight hours, but meeting authorization is not persisted or tied to a Vexa identity.
-- Demo mode uses a fixed five-entry transcript and deterministic answer logic; it is not a real language model.
-- Live Vexa integration assumes one `GET` transcript endpoint and a small set of response shapes; provider-specific joining, bot lifecycle, polling, and reconnect behavior are not implemented.
-- Live LLM responses are plain text. Sources are selected by simple transcript keyword matching, and live action-item extraction is not implemented.
-- Transcript context is posted from the browser to the ask route on each question. There is no server-side transcript store, streaming, pagination, redaction, or retention policy.
-- There is no automatic speech capture, browser recording, autonomous action execution, task-system integration, calendar integration, or notification delivery.
-- The UI does not yet include production-grade observability, audit logging, abuse protection, or accessibility testing beyond basic semantic labels and responsive layout.
+- The current repository is a demo until the live Vexa and Anthropic adapters are finished.
+- Production authentication, meeting/session binding, rate limits, transcript retention, redaction, and audit logging still need to be hardened.
+- Google Meet may place the Vexa bot in a waiting room; the host must admit it.
+- The assistant is intentionally silent. It only responds in the side panel after a user asks a question.
