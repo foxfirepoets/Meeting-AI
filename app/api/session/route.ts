@@ -9,8 +9,12 @@ export async function POST(request: Request) {
   const meetingInput = body.meetingUrl?.trim() || body.meetingId?.trim() || "";
   if (!meetingInput) return Response.json({ error: "Paste a Google Meet link." }, { status: 400 });
   if (meetingInput.length > 500) return Response.json({ error: "Meeting link is too long." }, { status: 400 });
-  if (!body.accessCode || body.accessCode.length > 200 || !isValidAccessCode(body.accessCode)) {
-    return Response.json({ error: "Invalid meeting access code." }, { status: 401 });
+  try {
+    if (!body.accessCode || body.accessCode.length > 200 || !isValidAccessCode(body.accessCode)) {
+      return Response.json({ error: "Invalid meeting access code." }, { status: 401 });
+    }
+  } catch {
+    return Response.json({ error: "The app is not configured with an access code yet." }, { status: 503 });
   }
   let meetingId: string;
   try {
