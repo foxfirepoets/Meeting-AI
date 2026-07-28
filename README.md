@@ -19,7 +19,7 @@ The host must tell participants that the meeting is being recorded/transcribed a
 
 ## Current status
 
-The repository currently contains a working demo UI and demo transcript flow. Demo mode does not connect to a real meeting. The live Vexa bot/transcript integration and direct Anthropic Messages API adapter are the next implementation steps required for real meetings.
+The repository contains both a deterministic demo mode and live-provider adapters. Demo mode does not connect to a real meeting. Live mode requires valid Vexa and Anthropic environment variables and a production deployment.
 
 ## Local demo
 
@@ -81,7 +81,7 @@ LLM_API_KEY=your-anthropic-api-key
 LLM_MODEL=claude-sonnet-4-20250514
 ```
 
-The live adapter must call Anthropic’s `/messages` endpoint. The current demo adapter still uses the OpenAI-compatible `/chat/completions` shape, so live Anthropic mode is not complete yet.
+The live adapter calls Anthropic’s `/messages` endpoint. It does not invoke Claude Code CLI or any local shell command.
 
 ## Vercel deployment
 
@@ -97,11 +97,13 @@ Users do not need to install Vexa, Claude, or Meeting-AI. They only need the Ver
 
 - `POST /api/session` — validates the meeting access code and creates a session.
 - `GET /api/meeting/{meetingId}/transcript` — loads transcript context.
-- `POST /api/meeting/{meetingId}/ask` — asks the configured LLM about the transcript.
+- `POST /api/meeting/{meetingId}/ask` — loads the transcript server-side and asks Claude about it.
+- `POST /api/meeting/{meetingId}/stop` — stops the Vexa bot.
 
 ## Important limitations before production use
 
-- The current repository is a demo until the live Vexa and Anthropic adapters are finished.
-- Production authentication, meeting/session binding, rate limits, transcript retention, redaction, and audit logging still need to be hardened.
+- Production authentication is a shared access code, not individual user accounts.
+- Rate limiting is best-effort in serverless memory; use a durable rate limiter before exposing this publicly at scale.
+- Transcript retention, redaction, and audit logging are not yet implemented.
 - Google Meet may place the Vexa bot in a waiting room; the host must admit it.
 - The assistant is intentionally silent. It only responds in the side panel after a user asks a question.

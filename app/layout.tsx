@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Quietline — Silent meeting assistant",
-  description: "A demo-first meeting transcript companion.",
+  title: "Meeting-AI — Quiet meeting assistant",
+  description: "A silent side-panel assistant for live meeting transcripts.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

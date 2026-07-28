@@ -1,13 +1,27 @@
-import { createSessionToken, expectedAccessCode, sessionCookie } from "../../../lib/auth";
+import { createSessionToken, isValidAccessCode, sessionCookie } from "../../../lib/auth";
+import { getClientKey, allowRequest } from "../../../lib/rate-limit";
+import { parseGoogleMeetLink, startMeeting } from "../../../lib/vexa";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({})) as { accessCode?: string; meetingId?: string };
-  if (!body.meetingId?.trim()) return Response.json({ error: "Meeting ID is required." }, { status: 400 });
-  if (!body.accessCode || body.accessCode !== expectedAccessCode()) {
+  if (!allowRequest(`session:${getClientKey(request)}`, 10, 60_000)) return Response.json({ error: "Too many attempts. Try again in a minute." }, { status: 429 });
+  if (Number(request.headers.get("content-length") || 0) > 10_000) return Response.json({ error: "Request is too large." }, { status: 413 });
+  const body = await request.json().catch(() => ({})) as { accessCode?: string; meetingUrl?: string; meetingId?: string };
+  const meetingInput = body.meetingUrl?.trim() || body.meetingId?.trim() || "";
+  if (!meetingInput) return Response.json({ error: "Paste a Google Meet link." }, { status: 400 });
+  if (meetingInput.length > 500) return Response.json({ error: "Meeting link is too long." }, { status: 400 });
+  if (!body.accessCode || body.accessCode.length > 200 || !isValidAccessCode(body.accessCode)) {
     return Response.json({ error: "Invalid meeting access code." }, { status: 401 });
   }
-
-  const response = Response.json({ ok: true, mode: process.env.VEXA_MODE?.toLowerCase() === "live" ? "live" : "demo" });
-  response.headers.append("Set-Cookie", `${sessionCookie.name}=${createSessionToken()}; Max-Age=${sessionCookie.maxAge}; Path=${sessionCookie.path}; HttpOnly; SameSite=${sessionCookie.sameSite}${sessionCookie.secure ? "; Secure" : ""}`);
-  return response;
+  let meetingId: string;
+  try {
+    meetingId = parseGoogleMeetLink(meetingInput);
+    const started = await startMeeting(meetingId);
+    const response = Response.json({ ok: true, meetingId, ...started });
+    response.headers.append("Set-Cookie", `${sessionCookie.name}=${createSessionToken(meetingId)}; Max-Age=${sessionCookie.maxAge}; Path=${sessionCookie.path}; HttpOnly; SameSite=${sessionCookie.sameSite}${sessionCookie.secure ? "; Secure" : ""}`);
+    return response;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not start the meeting assistant.";
+    const status = message.includes("required") || message.includes("Google Meet") || message.includes("Enter") ? 400 : 502;
+    return Response.json({ error: message }, { status });
+  }
 }

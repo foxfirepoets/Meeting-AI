@@ -21,10 +21,12 @@ h1 em { color: var(--green); font-family: 'Playfair Display', serif; font-weight
 .hero-badge { border: 1px solid #c7d9d0; border-radius: 6px; color: var(--green); font: 11px 'DM Mono', monospace; line-height: 1.8; padding: 12px 15px; text-align: right; text-transform: uppercase; }
 .hero-badge span { color: #59aa77; }.hero-badge small { color: var(--muted); font-size: 10px; text-transform: none; }
 .access-card { background: var(--ink); border-radius: 8px; color: white; gap: 20px; padding: 19px 20px; }
+.access-actions { align-items: center; display: flex; gap: 8px; }
 .field-group { flex: 1; }.field-group label { color: #9ca9a4; display: block; font: 10px 'DM Mono', monospace; letter-spacing: .1em; margin: 0 0 7px; text-transform: uppercase; }
 input, textarea { border: 1px solid var(--line); border-radius: 5px; color: var(--ink); outline: none; transition: border .2s, box-shadow .2s; width: 100%; }
 input { background: #293632; border-color: #465651; color: white; padding: 11px 12px; }.field-group input:focus { border-color: #91ceb0; box-shadow: 0 0 0 3px rgba(145,206,176,.15); }
 .primary-button, .ask-button { background: var(--mint); border: 0; border-radius: 5px; color: var(--green); font-weight: 700; padding: 12px 16px; white-space: nowrap; }.primary-button span, .ask-button span { padding-left: 13px; }.primary-button:disabled, .ask-button:disabled { cursor: not-allowed; opacity: .5; }
+.secondary-button { background: transparent; border: 1px solid #62736c; border-radius: 5px; color: white; padding: 11px 13px; white-space: nowrap; }
 .error-banner { background: #fff0e9; border: 1px solid #f1c7b2; border-radius: 5px; color: #9b4d27; margin: 16px 0 0; padding: 12px 14px; }
 .workspace-grid { align-items: flex-start; display: grid; gap: 20px; grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr); margin-top: 20px; }
 .right-column { display: grid; gap: 20px; }.panel { background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 23px; }.panel-heading { justify-content: space-between; }.panel h2 { font-size: 22px; letter-spacing: -.04em; margin-bottom: 0; }.panel-status, .muted-copy { color: var(--muted); font-size: 12px; }.panel-status { border-bottom: 1px solid var(--line); padding: 0 0 17px; }

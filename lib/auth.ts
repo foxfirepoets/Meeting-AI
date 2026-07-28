@@ -5,27 +5,31 @@ const COOKIE_NAME = "meeting_session";
 const MAX_AGE_SECONDS = 60 * 60 * 8;
 
 function secret() {
-  return process.env.SESSION_SECRET || process.env.ACCESS_CODE || "prototype-session-secret";
+  const value = process.env.SESSION_SECRET;
+  if (value) return value;
+  if (process.env.NODE_ENV !== "production") return "prototype-session-secret";
+  throw new Error("SESSION_SECRET must be configured in production.");
 }
 
 function sign(value: string) {
   return createHmac("sha256", secret()).update(value).digest("base64url");
 }
 
-export function createSessionToken() {
-  const payload = `${Date.now()}.${randomUUID()}`;
+export function createSessionToken(meetingId: string) {
+  const payload = `${Date.now()}.${randomUUID()}.${meetingId}`;
   return `${payload}.${sign(payload)}`;
 }
 
-export function isValidSession(request: NextRequest) {
+export function isValidSession(request: NextRequest, meetingId?: string) {
   const token = request.cookies.get(COOKIE_NAME)?.value;
   if (!token) return false;
   const parts = token.split(".");
-  if (parts.length !== 3 || !/^\d+$/.test(parts[0])) return false;
+  if (parts.length !== 4 || !/^\d+$/.test(parts[0])) return false;
   if (Date.now() - Number(parts[0]) > MAX_AGE_SECONDS * 1000) return false;
-  const expected = sign(`${parts[0]}.${parts[1]}`);
+  const expected = sign(parts.slice(0, 3).join("."));
   try {
-    return timingSafeEqual(Buffer.from(parts[2]), Buffer.from(expected));
+    const validSignature = timingSafeEqual(Buffer.from(parts[3]), Buffer.from(expected));
+    return validSignature && (!meetingId || parts[2] === meetingId);
   } catch {
     return false;
   }
@@ -41,5 +45,14 @@ export const sessionCookie = {
 };
 
 export function expectedAccessCode() {
-  return process.env.ACCESS_CODE || "demo-access";
+  const value = process.env.ACCESS_CODE;
+  if (value) return value;
+  if (process.env.NODE_ENV !== "production") return "demo-access";
+  throw new Error("ACCESS_CODE must be configured in production.");
+}
+
+export function isValidAccessCode(value: string) {
+  const expected = Buffer.from(expectedAccessCode());
+  const actual = Buffer.from(value);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }

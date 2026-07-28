@@ -9,6 +9,7 @@ const required = [
   "app/api/session/route.ts",
   "app/api/meeting/[meetingId]/transcript/route.ts",
   "app/api/meeting/[meetingId]/ask/route.ts",
+  "app/api/meeting/[meetingId]/stop/route.ts",
   "lib/vexa.ts",
   "lib/llm.ts",
   "lib/auth.ts",
@@ -27,16 +28,19 @@ const vexa = readFileSync(join(root, "lib/vexa.ts"), "utf8");
 const llm = readFileSync(join(root, "lib/llm.ts"), "utf8");
 const readme = readFileSync(join(root, "README.md"), "utf8");
 const checks = [
-  ["meeting ID field", page.includes("Meeting ID")],
+  ["Google Meet link field", page.includes("Google Meet link")],
   ["transcript feed", page.includes("Transcript")],
   ["question box", page.includes("ask-heading")],
   ["answer panel", page.includes("answer-heading")],
   ["action items", page.includes("actions-heading")],
   ["Vexa base URL", vexa.includes("VEXA_BASE_URL")],
   ["Vexa API key", vexa.includes("VEXA_API_KEY")],
-  ["LLM compatible endpoint", llm.includes("/chat/completions")],
+  ["Anthropic Messages endpoint", llm.includes("/messages")],
+  ["Vexa bot endpoint", vexa.includes("/bots")],
+  ["Vexa transcript endpoint", vexa.includes("/transcripts/")],
+  ["server-side transcript loading", readFileSync(join(root, "app/api/meeting/[meetingId]/ask/route.ts"), "utf8").includes("getTranscript")],
   ["demo transcript fallback", vexa.includes("demoTranscript")],
-  ["provider documentation", readme.includes("Vercel deployment") && readme.includes("Known limitations")],
+  ["provider documentation", readme.includes("Vercel deployment") && readme.includes("Current status")],
 ];
 const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);
 if (failed.length) {
