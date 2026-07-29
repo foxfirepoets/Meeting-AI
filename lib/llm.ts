@@ -51,7 +51,14 @@ export async function answerQuestion(question: string, transcript: TranscriptEnt
     }),
     signal: AbortSignal.timeout(25_000),
   });
-  if (!response.ok) throw new Error(`LLM provider returned HTTP ${response.status}.`);
+  if (!response.ok) {
+    const detail = response.status === 401 || response.status === 403
+      ? "Check LLM_API_KEY in the deployment environment."
+      : response.status === 404
+        ? "Check LLM_MODEL in the deployment environment."
+        : `LLM provider returned HTTP ${response.status}.`;
+    throw new Error(detail);
+  }
   const payload = await response.json() as { content?: Array<{ type?: string; text?: string }> };
   const answer = payload.content?.filter((item) => item.type === "text").map((item) => item.text || "").join(" ").trim();
   if (!answer) throw new Error("LLM provider returned an empty answer.");

@@ -101,8 +101,13 @@ export async function startMeeting(meetingId: string) {
       voice_agent_enabled: false,
     }),
   });
-  if (!response.ok && response.status !== 409) throw new Error(`Vexa could not start the meeting bot (HTTP ${response.status}).`);
-  return { mode: "live" as const, status: "requested" as const };
+  if (!response.ok && response.status !== 409) {
+    const hint = response.status === 401 || response.status === 403
+      ? " Check VEXA_BOT_API_KEY."
+      : "";
+    throw new Error(`Vexa could not start the meeting bot (HTTP ${response.status}).${hint}`);
+  }
+  return { mode: "live" as const, status: response.status === 409 ? "already_running" as const : "requested" as const };
 }
 
 export async function stopMeeting(meetingId: string) {

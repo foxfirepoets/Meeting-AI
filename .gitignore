@@ -4,8 +4,8 @@ out/
 .env
 .env.local
 .env.*.local
+.vercel
 .vercel/
 *.tsbuildinfo
 npm-debug.log*
-*.tsbuildinfo
 .claude/cbv/

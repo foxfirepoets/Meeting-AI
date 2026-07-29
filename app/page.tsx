@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import type { AnswerResult, TranscriptEntry } from "@/lib/types";
 
 export default function Home() {
-  const [meetingLink, setMeetingLink] = useState("demo");
+  const [meetingLink, setMeetingLink] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [meetingId, setMeetingId] = useState("");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
@@ -14,14 +14,20 @@ export default function Home() {
   const [status, setStatus] = useState("Paste a Google Meet link to start.");
   const [loading, setLoading] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [stopping, setStopping] = useState(false);
 
   async function loadTranscript(id: string) {
     const response = await fetch(`/api/meeting/${encodeURIComponent(id)}/transcript`, { cache: "no-store" });
-    const body = await response.json();
+    const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || "Could not load transcript.");
-    setTranscript(body.entries || []);
-    setStatus(body.waitingForBot ? "Bot requested. Admit it in Google Meet; transcript will appear here." : `${body.mode === "demo" ? "Demo" : "Live"} transcript - ${body.entries.length} moments`);
-    return body.entries || [];
+    const entries = Array.isArray(body.entries) ? body.entries : [];
+    setTranscript(entries);
+    setStatus(
+      body.waitingForBot
+        ? "Bot requested. Admit Meeting-AI Notetaker in Google Meet; transcript will appear here."
+        : `${body.mode === "demo" ? "Demo" : "Live"} transcript - ${entries.length} moments`,
+    );
+    return entries;
   }
 
   useEffect(() => {
@@ -42,6 +48,7 @@ export default function Home() {
 
   async function start(event: FormEvent) {
     event.preventDefault();
+    if (loading || stopping) return;
     setLoading(true);
     setError("");
     setAnswer(null);
@@ -52,10 +59,16 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ meetingUrl: meetingLink, accessCode }),
       });
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Could not start meeting assistant.");
       setMeetingId(body.meetingId);
-      setStatus(body.mode === "demo" ? "Demo transcript loading." : "Bot requested. Admit it in Google Meet, then keep this page open.");
+      setStatus(
+        body.mode === "demo"
+          ? "Demo transcript loading."
+          : body.status === "already_running"
+            ? "Assistant already connected for this Meet. Admit Meeting-AI Notetaker if it is still waiting."
+            : "Bot requested. Admit Meeting-AI Notetaker in Google Meet, then keep this page open.",
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
     } finally {
@@ -64,21 +77,27 @@ export default function Home() {
   }
 
   async function stop() {
-    if (!meetingId) return;
+    if (!meetingId || stopping) return;
+    setStopping(true);
+    setError("");
     try {
       const response = await fetch(`/api/meeting/${encodeURIComponent(meetingId)}/stop`, { method: "POST" });
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Could not stop assistant.");
       setStatus("Assistant stopped.");
       setMeetingId("");
+      setTranscript([]);
+      setAnswer(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not stop assistant.");
+    } finally {
+      setStopping(false);
     }
   }
 
   async function ask(event: FormEvent) {
     event.preventDefault();
-    if (!question.trim() || !meetingId) return;
+    if (!question.trim() || !meetingId || asking) return;
     setAsking(true);
     setError("");
     try {
@@ -87,7 +106,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Could not answer question.");
       setAnswer(body);
     } catch (caught) {
@@ -105,7 +124,7 @@ export default function Home() {
       <form className="access-card" onSubmit={start}>
         <div className="field-group"><label htmlFor="meeting-link">Google Meet link</label><input id="meeting-link" value={meetingLink} onChange={(event) => setMeetingLink(event.target.value)} placeholder="https://meet.google.com/abc-defg-hij" /></div>
         <div className="field-group"><label htmlFor="access-code">Team access code</label><input id="access-code" type="password" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Your team code" /></div>
-        <div className="access-actions"><button className="primary-button" type="submit" disabled={loading}>{loading ? "Starting..." : "Start assistant"}<span>-&gt;</span></button>{meetingId && <button className="secondary-button" type="button" onClick={() => void stop()}>Stop</button>}</div>
+        <div className="access-actions"><button className="primary-button" type="submit" disabled={loading || stopping}>{loading ? "Starting..." : meetingId ? "Restart assistant" : "Start assistant"}<span>-&gt;</span></button>{meetingId && <button className="secondary-button" type="button" disabled={stopping || loading} onClick={() => void stop()}>{stopping ? "Stopping..." : "Stop"}</button>}</div>
       </form>
 
       {error && <p className="error-banner" role="alert">{error}</p>}

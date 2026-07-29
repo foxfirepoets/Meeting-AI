@@ -25,7 +25,12 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not start the meeting assistant.";
-    const status = message.includes("required") || message.includes("Google Meet") || message.includes("Enter") ? 400 : 502;
+    const status =
+      message.includes("required") || message.includes("Google Meet") || message.includes("Enter") || message.includes("Paste") || message.includes("lookup")
+        ? 400
+        : message.includes("not configured")
+          ? 503
+          : 502;
     return Response.json({ error: message }, { status });
   }
 }
