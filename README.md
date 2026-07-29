@@ -80,7 +80,7 @@ The intended live provider is the Anthropic API, not Claude Code CLI:
 LLM_MODE=live
 LLM_BASE_URL=https://api.anthropic.com/v1
 LLM_API_KEY=your-anthropic-api-key
-LLM_MODEL=claude-sonnet-4-20250514
+LLM_MODEL=claude-sonnet-5
 ```
 
 The live adapter calls Anthropic’s `/messages` endpoint. It does not invoke Claude Code CLI or any local shell command.
