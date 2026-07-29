@@ -16,9 +16,14 @@ type VexaRecord = {
 
 function vexaConfig() {
   const baseUrl = process.env.VEXA_BASE_URL?.replace(/\/$/, "");
-  const apiKey = process.env.VEXA_API_KEY;
-  if (!baseUrl || !apiKey) throw new Error("Vexa live mode requires VEXA_BASE_URL and VEXA_API_KEY.");
-  return { baseUrl, apiKey };
+  // Hosted Vexa issues separate keys for bot control and transcription.
+  // Keep VEXA_API_KEY as a backwards-compatible fallback for older deployments.
+  const botApiKey = process.env.VEXA_BOT_API_KEY || process.env.VEXA_API_KEY;
+  const transcriptionApiKey = process.env.VEXA_TRANSCRIPTION_API_KEY || process.env.VEXA_API_KEY;
+  if (!baseUrl || !botApiKey || !transcriptionApiKey) {
+    throw new Error("Vexa live mode requires VEXA_BASE_URL, VEXA_BOT_API_KEY, and VEXA_TRANSCRIPTION_API_KEY.");
+  }
+  return { baseUrl, botApiKey, transcriptionApiKey };
 }
 
 function fetchWithTimeout(input: string, init: RequestInit = {}) {
@@ -82,10 +87,10 @@ export function parseGoogleMeetLink(value: string) {
 export async function startMeeting(meetingId: string) {
   const mode = process.env.VEXA_MODE?.toLowerCase() || "demo";
   if (mode !== "live") return { mode: "demo" as const, status: "active" as const };
-  const { baseUrl, apiKey } = vexaConfig();
+  const { baseUrl, botApiKey } = vexaConfig();
   const response = await fetchWithTimeout(`${baseUrl}/bots`, {
     method: "POST",
-    headers: { "X-API-Key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "X-API-Key": botApiKey, "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
       platform: PLATFORM,
       native_meeting_id: meetingId,
@@ -103,10 +108,10 @@ export async function startMeeting(meetingId: string) {
 export async function stopMeeting(meetingId: string) {
   const mode = process.env.VEXA_MODE?.toLowerCase() || "demo";
   if (mode !== "live") return;
-  const { baseUrl, apiKey } = vexaConfig();
+  const { baseUrl, botApiKey } = vexaConfig();
   const response = await fetchWithTimeout(`${baseUrl}/bots/${PLATFORM}/${encodeURIComponent(meetingId)}`, {
     method: "DELETE",
-    headers: { "X-API-Key": apiKey, Accept: "application/json" },
+    headers: { "X-API-Key": botApiKey, Accept: "application/json" },
   });
   if (!response.ok && response.status !== 404) throw new Error(`Vexa could not stop the meeting bot (HTTP ${response.status}).`);
 }
@@ -114,9 +119,9 @@ export async function stopMeeting(meetingId: string) {
 export async function getTranscript(meetingId: string): Promise<{ entries: TranscriptEntry[]; mode: "demo" | "live" }> {
   const mode = process.env.VEXA_MODE?.toLowerCase() || "demo";
   if (mode !== "live") return { entries: demoTranscript, mode: "demo" };
-  const { baseUrl, apiKey } = vexaConfig();
+  const { baseUrl, transcriptionApiKey } = vexaConfig();
   const response = await fetchWithTimeout(`${baseUrl}/transcripts/${PLATFORM}/${encodeURIComponent(meetingId)}`, {
-    headers: { "X-API-Key": apiKey, Accept: "application/json" },
+    headers: { "X-API-Key": transcriptionApiKey, Accept: "application/json" },
   });
   if (response.status === 404) return { entries: [], mode: "live" };
   if (!response.ok) throw new Error(`Vexa transcript request failed (HTTP ${response.status}).`);

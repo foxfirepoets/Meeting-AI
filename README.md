@@ -65,10 +65,12 @@ For the hosted Vexa service:
 ```env
 VEXA_MODE=live
 VEXA_BASE_URL=https://api.cloud.vexa.ai
-VEXA_API_KEY=your-vexa-api-key
+VEXA_BOT_API_KEY=your-vexa-bot-key
+VEXA_TRANSCRIPTION_API_KEY=your-vexa-transcription-key
 ```
 
-Get a hosted Vexa API key at [vexa.ai/account](https://vexa.ai/account). Vexa’s API sends the bot to the meeting and provides transcript data. The Vexa service is external to Vercel and must be reachable over HTTPS.
+Create both hosted Vexa keys at [vexa.ai/account](https://vexa.ai/account): a Bot Key sends the notetaker to Google Meet, and a Transcription Key reads the transcript.
+
 
 ### Anthropic
 
