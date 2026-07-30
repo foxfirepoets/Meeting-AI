@@ -15,3 +15,17 @@ export type AnswerResult = {
   actions: string[];
   mode: "demo" | "live";
 };
+
+export type SavedTranscript = {
+  meetingId: string;
+  savedAt: string;
+  entryCount: number;
+  entries: TranscriptEntry[];
+};
+
+export type TranscriptSummary = {
+  pathname: string;
+  meetingId: string;
+  savedAt: string;
+  archived: boolean;
+};

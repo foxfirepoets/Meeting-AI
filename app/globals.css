@@ -38,3 +38,10 @@ input { background: #293632; border-color: #465651; color: white; padding: 11px 
 .action-list { display: grid; gap: 10px; margin-top: 18px; }.action-row { align-items: flex-start; background: #f3faf6; border: 1px solid #dceee4; border-radius: 5px; display: flex; font-size: 13px; gap: 10px; line-height: 1.45; padding: 11px; }.check-box { border: 1px solid #8dbda2; border-radius: 3px; display: inline-block; flex: 0 0 15px; height: 15px; margin-top: 1px; }
 .footer { border-top: 1px solid var(--line); color: var(--muted); font: 10px 'DM Mono', monospace; justify-content: space-between; letter-spacing: .02em; margin-top: 34px; padding-top: 16px; }
 @media (max-width: 800px) { .shell { padding: 20px 16px; }.hero { align-items: flex-start; flex-direction: column; gap: 27px; padding: 50px 0 30px; }.hero-badge { text-align: left; }.access-card { align-items: stretch; flex-direction: column; gap: 14px; }.workspace-grid { grid-template-columns: 1fr; }.transcript-feed { max-height: none; }.footer { align-items: flex-start; flex-direction: column; gap: 8px; line-height: 1.5; } }
+
+.archive-panel { margin-top: 20px; }
+.archive-panel .source-row { align-items: center; border-bottom: 1px solid #edf0ee; gap: 12px; }
+.archive-panel .source-row span:nth-child(2) { flex: 1; }
+.archive-panel .transcript-feed { margin-top: 14px; }
+.archive-button { background: #fff; border: 1px solid var(--line); border-radius: 5px; color: var(--ink); cursor: pointer; font-size: 12px; padding: 7px 12px; white-space: nowrap; }
+.archive-button:hover { border-color: var(--orange); color: var(--orange); }

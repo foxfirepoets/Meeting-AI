@@ -9,3 +9,5 @@ out/
 *.tsbuildinfo
 npm-debug.log*
 .claude/cbv/
+.env*
+test-outputs/

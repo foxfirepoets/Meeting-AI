@@ -30,9 +30,10 @@ export async function answerQuestion(question: string, transcript: TranscriptEnt
   if (mode !== "live") return demoAnswer(question, transcript);
 
   const baseUrl = (process.env.LLM_BASE_URL || "https://api.anthropic.com/v1").replace(/\/$/, "");
-  const apiKey = process.env.LLM_API_KEY;
-  const model = process.env.LLM_MODEL;
-  if (!apiKey || !model) throw new Error("LLM live mode requires LLM_API_KEY and LLM_MODEL.");
+  // ANTHROPIC_API_KEY is accepted because that is the name the provider uses.
+  const apiKey = process.env.LLM_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const model = process.env.LLM_MODEL || "claude-sonnet-5";
+  if (!apiKey) throw new Error("LLM live mode requires LLM_API_KEY (or ANTHROPIC_API_KEY).");
 
   const context = transcript.map((entry) => `[${entry.timeLabel}] ${entry.speaker}: ${entry.text}`).join("\n").slice(-80_000);
   const response = await fetch(`${baseUrl}/messages`, {

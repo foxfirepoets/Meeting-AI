@@ -10,6 +10,7 @@ type VexaRecord = {
   text?: string;
   timestamp?: number | string;
   start_time?: number;
+  start?: number;
   timeLabel?: string;
   source?: string;
 };
@@ -38,11 +39,23 @@ function normalizeRecords(value: unknown): TranscriptEntry[] {
       : Array.isArray(container.transcript) ? container.transcript
         : Array.isArray(container.items) ? container.items : [];
 
+  // Hosted Vexa reports `start` as an absolute epoch, so offsets are taken from
+  // the first segment to produce a meeting-relative clock.
+  const firstStart = records.reduce<number | null>((earliest, record) => {
+    const raw = (record as VexaRecord)?.start ?? (record as VexaRecord)?.start_time;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return earliest;
+    return earliest === null || value < earliest ? value : earliest;
+  }, null);
+
   return records.flatMap((record, index) => {
     if (typeof record !== "object" || record === null) return [];
     const item = record as VexaRecord;
-    const rawSeconds = item.start_time ?? item.timestamp ?? index;
-    const seconds = Number.isFinite(Number(rawSeconds)) ? Number(rawSeconds) : index;
+    const rawSeconds = item.start ?? item.start_time ?? item.timestamp;
+    const absolute = Number(rawSeconds);
+    const seconds = Number.isFinite(absolute)
+      ? Math.max(0, absolute - (firstStart ?? absolute))
+      : index;
     const text = typeof item.text === "string" ? item.text.trim() : "";
     if (!text || text.length > 20_000) return [];
     return [{
