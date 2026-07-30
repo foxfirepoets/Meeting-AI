@@ -11,7 +11,7 @@ function secret() {
   throw new Error("SESSION_SECRET must be configured in production.");
 }
 
-function sign(value: string) {
+export function sign(value: string) {
   return createHmac("sha256", secret()).update(value).digest("base64url");
 }
 

@@ -1,10 +1,12 @@
 import { head, list, put } from "@vercel/blob";
+import { sign } from "./auth";
 import type { SavedTranscript, TranscriptEntry, TranscriptSummary } from "./types";
 
 // Rolling copy is overwritten as the meeting runs; the archive copy is written
 // once when the assistant stops so a reused Meet code cannot clobber history.
 const LIVE_PREFIX = "transcripts/live/";
 const ARCHIVE_PREFIX = "transcripts/archive/";
+const SHARED_PREFIX = "transcripts/shared/";
 const SAVE_INTERVAL_MS = 60_000;
 
 const lastSaved = new Map<string, { at: number; count: number }>();
@@ -65,9 +67,31 @@ export async function listTranscripts(): Promise<TranscriptSummary[]> {
     .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
 }
 
+/**
+ * Share tokens are an HMAC of the stored path, so sharing the same transcript
+ * twice yields the same link and the token cannot be guessed from the meeting
+ * code. Anyone holding the link can read that transcript without signing in.
+ */
+export function shareToken(pathname: string) {
+  return sign(`share:${pathname}`).slice(0, 32);
+}
+
+export async function shareTranscript(pathname: string): Promise<string | null> {
+  const saved = await readTranscript(pathname);
+  if (!saved) return null;
+  const token = shareToken(pathname);
+  await write(`${SHARED_PREFIX}${token}.json`, saved);
+  return token;
+}
+
+export async function readShared(token: string): Promise<SavedTranscript | null> {
+  if (!storageEnabled() || !/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
+  return await readTranscript(`${SHARED_PREFIX}${token}.json`);
+}
+
 export async function readTranscript(pathname: string): Promise<SavedTranscript | null> {
   if (!storageEnabled()) return null;
-  if (!pathname.startsWith(ARCHIVE_PREFIX) && !pathname.startsWith(LIVE_PREFIX)) return null;
+  if (![ARCHIVE_PREFIX, LIVE_PREFIX, SHARED_PREFIX].some((prefix) => pathname.startsWith(prefix))) return null;
   const meta = await head(pathname).catch(() => null);
   if (!meta) return null;
   const response = await fetch(meta.url, { cache: "no-store" });

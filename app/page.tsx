@@ -22,6 +22,7 @@ export default function Home() {
   const [archiveEntry, setArchiveEntry] = useState<SavedTranscript | null>(null);
   const [archiveError, setArchiveError] = useState("");
   const [archiveLoading, setArchiveLoading] = useState(false);
+  const [shareLink, setShareLink] = useState("");
 
   async function loadTranscript(id: string) {
     const response = await fetch(`/api/meeting/${encodeURIComponent(id)}/transcript`, { cache: "no-store" });
@@ -157,6 +158,23 @@ export default function Home() {
     }
   }
 
+  async function shareSaved(pathname: string) {
+    setArchiveError("");
+    try {
+      const response = await fetch("/api/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: pathname }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Could not create a share link.");
+      setShareLink(body.url);
+      await navigator.clipboard.writeText(body.url).catch(() => {});
+    } catch (caught) {
+      setArchiveError(caught instanceof Error ? caught.message : "Could not create a share link.");
+    }
+  }
+
   async function openSaved(pathname: string) {
     setArchiveLoading(true);
     setArchiveError("");
@@ -202,11 +220,13 @@ export default function Home() {
             {archiveLoading && <p className="panel-status">Loading...</p>}
             {archiveError && <p className="error-banner" role="alert">{archiveError}</p>}
             {!archiveLoading && !archiveError && !archive.length && <p className="muted-copy">No transcripts saved yet. They are stored automatically while a meeting runs and when you press Stop.</p>}
+            {shareLink && <p className="share-link">Anyone with this link can read that transcript - copied to your clipboard.<br /><a href={shareLink} target="_blank" rel="noreferrer">{shareLink}</a></p>}
             {!archiveEntry && archive.map((item) => (
               <div className="source-row" key={item.pathname}>
                 <span className="source-time">{item.archived ? "final" : "live"}</span>
                 <span><strong>{item.meetingId}</strong> - {new Date(item.savedAt).toLocaleString()}</span>
                 <button className="archive-button" type="button" onClick={() => void openSaved(item.pathname)}>Read</button>
+                <button className="archive-button" type="button" onClick={() => void shareSaved(item.pathname)}>Share link</button>
               </div>
             ))}
             {archiveEntry && (
